@@ -30,6 +30,45 @@ std::unordered_map<int, cv::Rect> roi_color(const cv::Mat& input) {
      */
     std::unordered_map<int, cv::Rect> res;
     // IMPLEMENT YOUR CODE HERE
+    cv::Mat gray;
+    cv::cvtColor(input, gray, cv::COLOR_BGR2GRAY);
 
+    // 对灰度图像进行二值化 (使用 THRESH_BINARY_INV 和 THRESH_OTSU)
+    cv::Mat binary;
+    cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY_INV | cv::THRESH_OTSU);
+
+    // 找到轮廓
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    // 对每个轮廓找到外接矩形并计算颜色
+    for (const auto& contour : contours) {
+        // 使用 boundingRect 得到轮廓的矩形
+        cv::Rect rect = cv::boundingRect(contour);
+
+        // 从原始输入图像中提取 ROI
+        cv::Mat roi = input(rect);
+
+        // 计算 ROI 的平均颜色
+        cv::Scalar avg_color = cv::mean(roi);
+
+        // 判断主要颜色
+        int color_key;
+        if (avg_color[0] > avg_color[1] && avg_color[0] > avg_color[2]) {
+            // Blue channel is dominant
+            color_key = 0;  // Blue
+        } else if (avg_color[1] > avg_color[0] && avg_color[1] > avg_color[2]) {
+            // Green channel is dominant
+            color_key = 1;  // Green
+        } else {
+            // Red channel is dominant
+            color_key = 2;  // Red
+        }
+
+        // 将颜色和矩形存入 unordered_map
+        res[color_key] = rect;
+    }
+
+    // 返回包含颜色和对应矩形区域的 map
     return res;
 }
